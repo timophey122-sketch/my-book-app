@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "book-app-best",
+    "slug": "snack-194d31ff-d8be-41a6-8d68-f8ac0064d5ac",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "com.tirka.snack194d31ffd8be41a68d68f8ac0064d5ac"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "7cf31e6f-cee0-45a9-bd1a-d2edb9e509cf"
+      }
+    }
+  }
+}
