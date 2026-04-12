@@ -134,8 +134,8 @@ export default function App() {
       {(screen === 'login' || screen === 'register') && (
         <View style={styles.centerBox}>
           <Text style={styles.headerTitle}>{screen === 'login' ? 'ВХОД' : 'РЕГИСТРАЦИЯ'}</Text>
-          <TextInput style={styles.setupInput} placeholder="Email" value={userEmail} onChangeText={setUserEmail} autoCapitalize="none" />
-          <TextInput style={styles.setupInput} placeholder="Пароль" secureTextEntry={true} value={userPass} onChangeText={setUserPass} />
+<TextInput style={styles.setupInput} placeholder="Email" placeholderTextColor="#888" value={userEmail} onChangeText={setUserEmail} autoCapitalize="none" />
+<TextInput style={styles.setupInput} placeholder="Пароль" placeholderTextColor="#888" secureTextEntry={true} value={userPass} onChangeText={setUserPass} />
           <TouchableOpacity style={styles.orangeBtn} onPress={() => handleAuth(screen === 'login' ? 'log' : 'reg')}><Text style={styles.btnText}>ГОТОВО</Text></TouchableOpacity>
           {screen === 'login' && <TouchableOpacity onPress={() => setScreen('forgot')} style={{marginTop: 15}}><Text style={{color: 'orange', textAlign: 'center'}}>Забыли пароль?</Text></TouchableOpacity>}
           <TouchableOpacity onPress={() => setScreen('auth_choice')} style={{marginTop: 20}}><Text style={{color: 'grey', textAlign: 'center'}}>Назад</Text></TouchableOpacity>
