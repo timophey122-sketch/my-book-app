@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Text, View, StyleSheet, TouchableOpacity, SafeAreaView, TextInput, ScrollView, Alert, Modal } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { auth, db } from './firebaseConfig';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
 
 export default function App() {
   const [screen, setScreen] = useState('auth_choice'); 
@@ -13,6 +15,17 @@ export default function App() {
 
   // Восстановление пароля
   const [resetEmail, setResetEmail] = useState('');
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setStep('calendar'); // Друг уже в системе — пускаем к Титану!
+      } else {
+        setStep('auth'); // Никто не вошел — показываем экран входа
+      }
+      setIsLoading(false); // Выключаем загрузку
+    });
+    return unsubscribe;
+  }, []);
 
   // Тест и модалки
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -56,16 +69,22 @@ export default function App() {
 
   const handleAuth = async (mode) => {
     if (!userEmail || !userPass) return Alert.alert("Ошибка", "Заполни все поля!");
-    if (mode === 'reg') {
-      await AsyncStorage.setItem('@user_data_secure', JSON.stringify({email: userEmail, pass: userPass}));
-      Alert.alert("Успех", "Регистрация прошла! Теперь нажми ВХОД.");
-      setScreen('auth_choice');
-    } else {
-      const saved = JSON.parse(await AsyncStorage.getItem('@user_data_secure'));
-      if (saved && userEmail === saved.email && userPass === saved.pass) setScreen('library');
-      else Alert.alert("Ошибка", "Неверный логин или пароль");
+
+    try {
+      if (mode === 'reg') {
+        // РЕГИСТРАЦИЯ: создает аккаунт в облаке Google
+        await createUserWithEmailAndPassword(auth, userEmail, userPass);
+        Alert.alert("Успех", "Аккаунт создан! Теперь нажми ВХОД.");
+      } else {
+        // ВХОД: проверяет данные в облаке
+        await signInWithEmailAndPassword(auth, userEmail, userPass);
+      }
+    } catch (error) {
+      // Если почта уже занята или пароль слишком простой
+      Alert.alert("Ошибка сервера", error.message);
     }
   };
+
 
   const handleForgotPass = async () => {
     const saved = JSON.parse(await AsyncStorage.getItem('@user_data_secure'));
