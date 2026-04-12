@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
   full: { flex: 1, padding: 20, paddingTop: 50 },
   centerBox: { flex: 1, justifyContent: 'center', padding: 15 },
   headerTitle: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
-  setupInput: { borderBottomWidth: 2, borderBottomColor: 'orange', marginBottom: 20, fontSize: 18, padding: 5 },
+  setupInput: { borderBottomWidth: 2, borderBottomColor: 'orange', marginBottom: 20, fontSize: 18, padding: 5, color: '#000' },
   orangeBtn: { backgroundColor: 'orange', padding: 15, borderRadius: 15, alignItems: 'center' },
   btnText: { color: 'white', fontWeight: 'bold' },
   bookRow: { flexDirection: 'row', backgroundColor: '#f9f9f9', borderRadius: 15, marginBottom: 10, alignItems: 'center' },
