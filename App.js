@@ -199,9 +199,9 @@ export default function App() {
       {screen === 'setup' && (
         <View style={styles.centerBox}>
           <Text style={styles.headerTitle}>{editingBookId ? 'ИЗМЕНИТЬ' : 'НОВАЯ КНИГА'}</Text>
-          <TextInput style={styles.setupInput} placeholder="Название" value={newTitle} onChangeText={setNewTitle} />
-          <TextInput style={styles.setupInput} placeholder="Всего страниц" keyboardType="numeric" value={newTotal} onChangeText={t => setNewTotal(t.replace(/[^0-9]/g, ''))} />
-          <TextInput style={styles.setupInput} placeholder="Норма в день" keyboardType="numeric" value={newGoal} onChangeText={g => setNewGoal(g.replace(/[^0-9]/g, ''))} />
+        <TextInput style={styles.setupInput} placeholder="Название" placeholderTextColor="#888" value={newTitle} onChangeText={setNewTitle} />
+<TextInput style={styles.setupInput} placeholder="Всего страниц" placeholderTextColor="#888" keyboardType="numeric" value={newTotal} onChangeText={t => setNewTotal(t.replace(/[^0-9]/g, ''))} />
+<TextInput style={styles.setupInput} placeholder="Норма в день" placeholderTextColor="#888" keyboardType="numeric" value={newGoal} onChangeText={g => setNewGoal(g.replace(/[^0-9]/g, ''))} />
           <TouchableOpacity style={styles.orangeBtn} onPress={() => {
             if (editingBookId) setBooks(books.map(b => b.id === editingBookId ? {...b, title: newTitle, totalPages: parseInt(newTotal), goal: parseInt(newGoal)} : b));
             else setBooks([...books, {id: Date.now(), title: newTitle, totalPages: parseInt(newTotal), goal: parseInt(newGoal), history: {}, completed: false, nextAttempt: 0}]);
