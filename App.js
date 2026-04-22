@@ -75,9 +75,10 @@ export default function App() {
         // РЕГИСТРАЦИЯ: создает аккаунт в облаке Google
         await createUserWithEmailAndPassword(auth, userEmail, userPass);
         Alert.alert("Успех", "Аккаунт создан! Теперь нажми ВХОД.");
-      } else {
+         } else {
         // ВХОД: проверяет данные в облаке
         await signInWithEmailAndPassword(auth, userEmail, userPass);
+        setStep('calendar'); 
       }
     } catch (error) {
       // Если почта уже занята или пароль слишком простой
