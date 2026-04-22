@@ -76,7 +76,7 @@ export default function App() {
         Alert.alert("Успех", "Аккаунт создан! Теперь нажми ВХОД.");
       } else {
         await signInWithEmailAndPassword(auth, userEmail, userPass);
-        setStep('calendar'); // Тут буква 'S' уже большая!
+      setScreen('calendar'); // Тут буква 'S' уже большая!
       }
     } catch (error) {
       Alert.alert("Ошибка сервера", error.message);
