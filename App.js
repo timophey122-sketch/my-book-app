@@ -5,7 +5,7 @@ import { auth, db } from './firebaseConfig';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
 
 export default function App() {
-  const [screen, setScreen] = useState('auth_choice'); 
+const [step, setStep] = useState('auth_choice');
   const [userEmail, setUserEmail] = useState('');
   const [userPass, setUserPass] = useState('');
   const [books, setBooks] = useState([]); 
