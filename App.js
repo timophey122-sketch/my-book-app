@@ -26,7 +26,7 @@ export default function App() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const saved = await AsyncStorage.getItem('my_tracker_apk_perfect_v200');
+        const saved = await AsyncStorage.getItem('my_tracker_apk_keyboard_perfect');
         if (saved) {
           const parsed = JSON.parse(saved);
           setBooks(parsed);
@@ -41,7 +41,7 @@ export default function App() {
 
   const saveBooks = async (updatedBooks) => {
     setBooks(updatedBooks);
-    await AsyncStorage.setItem('my_tracker_apk_perfect_v200', JSON.stringify(updatedBooks));
+    await AsyncStorage.setItem('my_tracker_apk_keyboard_perfect', JSON.stringify(updatedBooks));
   };
 
   const handleSaveBook = () => {
@@ -51,7 +51,7 @@ export default function App() {
     const total = parseInt(totalPages, 10);
     let norm = parseInt(dailyNorm, 10);
     
-    if (isNaN(total) || isNaN(norm)) return Alert.alert("Ошибка", "Введите корректные числа!");
+    if (isNaN(total) || isNaN(norm)) return Alert.alert("Ошибка", "Введите числа!");
 
     if (norm > total) {
       norm = total;
@@ -242,22 +242,20 @@ export default function App() {
           <Text style={styles.statusMessage}>{isFuture ? 'ПИСАТЬ НАПЕРЁД НЕЛЬЗЯ!' : 'СКОЛЬКО ПРОЧИТАЛ СЕГОДНЯ?'}</Text>
 
           <View style={styles.counterContainer}>
-            {!isFuture ? (
-              <TextInput 
-                style={styles.bigCounterInput} 
-                keyboardType="numeric"
-                // ИСПРАВЛЕНО: Всегда передаем строку "0", если в стейте ноль, чтобы Android не прятал клавиатуру мгновенно
-                value={currentProgressValue.toString()} 
-                placeholder="0"
-                placeholderTextColor="#222"
-                onChangeText={handleUpdateProgress}
-                underlineColorAndroid="transparent"
-                blurOnSubmit={false}
-                selectTextOnFocus={true} // При тапе весь ноль сразу выделится, и его можно будет мгновенно затереть своей цифрой
-              />
-            ) : (
-              <Text style={[styles.bigCounterInput, { color: '#999' }]}>0</Text>
-            )}
+            {/* ТЕПЕРЬ ИНПУТ НА ЭКРАНЕ ВСЕГДА. ОН НЕ ПЕРЕСОЗДАЕТСЯ, И КЛАВИАТУРА НЕ ВЫЛЕТАЕТ */}
+            <TextInput 
+              style={[styles.bigCounterInput, isFuture && { color: '#999' }]} 
+              keyboardType="numeric"
+              value={currentProgressValue === 0 ? '' : currentProgressValue.toString()}
+              placeholder="0"
+              placeholderTextColor="#222"
+              onChangeText={handleUpdateProgress}
+              underlineColorAndroid="transparent"
+              editable={!isFuture} // Будущие дни блокируют ввод автоматически
+              blurOnSubmit={false}
+              selectTextOnFocus={true}
+            />
+
             {isBookFinished && (
               <View style={styles.congratsBlock}>
                 <Text style={{ fontSize: 44, marginBottom: 5 }}>🎉</Text>
@@ -306,7 +304,7 @@ const styles = StyleSheet.create({
   calendarBookSub: { fontSize: 16, color: '#000', marginBottom: 25 },
   statusMessage: { fontSize: 15, color: '#8e8e93', textTransform: 'uppercase', marginBottom: 15 },
   counterContainer: { flex: 1, justifyContent: 'flex-start', paddingTop: 10, alignItems: 'center', width: '100%' },
-  bigCounterInput: { fontSize: 80, fontWeight: '500', color: '#000', textAlign: 'center', minWidth: 200, marginBottom: 5 },
+  bigCounterInput: { fontSize: 80, fontWeight: '500', color: '#000', textAlign: 'center', minWidth: 200, marginBottom: 5, padding: 0 },
   congratsBlock: { alignItems: 'center', marginTop: 0, marginBottom: 10 },
   congratsText: { fontSize: 18, fontWeight: 'bold', color: '#000', textAlign: 'center' },
   darkButton: { backgroundColor: '#2c2c2e', width: '100%', borderRadius: 16, paddingVertical: 18, alignItems: 'center', marginBottom: 65, alignSelf: 'center' },
