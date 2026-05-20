@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, Alert, Keyboard } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const formatDateKey = (dateObj) => {
@@ -26,7 +26,7 @@ export default function App() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const saved = await AsyncStorage.getItem('my_tracker_final_nocolors');
+        const saved = await AsyncStorage.getItem('my_tracker_apk_perfect_v200');
         if (saved) {
           const parsed = JSON.parse(saved);
           setBooks(parsed);
@@ -41,7 +41,7 @@ export default function App() {
 
   const saveBooks = async (updatedBooks) => {
     setBooks(updatedBooks);
-    await AsyncStorage.setItem('my_tracker_final_nocolors', JSON.stringify(updatedBooks));
+    await AsyncStorage.setItem('my_tracker_apk_perfect_v200', JSON.stringify(updatedBooks));
   };
 
   const handleSaveBook = () => {
@@ -51,7 +51,7 @@ export default function App() {
     const total = parseInt(totalPages, 10);
     let norm = parseInt(dailyNorm, 10);
     
-    if (isNaN(total) || isNaN(norm)) return Alert.alert("Ошибка", "Введите числа!");
+    if (isNaN(total) || isNaN(norm)) return Alert.alert("Ошибка", "Введите корректные числа!");
 
     if (norm > total) {
       norm = total;
@@ -173,17 +173,12 @@ export default function App() {
     saveBooks(updated);
   };
 
-  // ТЕПЕРЬ ВСЕ КРУЖОЧКИ ВСЕГДА КРАСИВОГО СТАНДАРТНОГО СЕРОГО ЦВЕТА
-  const getDayCircleColor = () => {
-    return '#f2f2f7'; 
-  };
-
   return (
     <View style={styles.container}>
       {screen === 'library' && (
         <View style={styles.innerWrapper}>
           <Text style={styles.screenTitle}>БИБЛИОТЕКА</Text>
-          <ScrollView style={styles.scrollList}>
+          <ScrollView style={styles.scrollList} keyboardShouldPersistTaps="always">
             {books.map(item => {
               const itemRead = Object.values(item.progress || {}).reduce((a, b) => (parseInt(a,10)||0) + (parseInt(b,10)||0), 0);
               const itemLeft = Math.max(0, item.totalPages - itemRead);
@@ -232,9 +227,8 @@ export default function App() {
             {weekDays.map((day, idx) => {
               const isSelected = selectedDayOffset === idx;
               const isActualToday = formatDateKey(day) === todayKey; 
-              const circleColor = getDayCircleColor();
               return (
-                <TouchableOpacity key={idx} style={[styles.dayCircle, { backgroundColor: circleColor }, isActualToday && styles.todayGreenCircle]} onPress={() => setSelectedDayOffset(idx)}>
+                <TouchableOpacity key={idx} style={[styles.dayCircle, isActualToday && styles.todayGreenCircle]} onPress={() => setSelectedDayOffset(idx)}>
                   <Text style={styles.dayWeekText}>{daysOfWeek[day.getDay()]}</Text>
                   <Text style={styles.dayNumText}>{day.getDate()}</Text>
                   {isSelected && <View style={styles.underLine} />}
@@ -252,12 +246,14 @@ export default function App() {
               <TextInput 
                 style={styles.bigCounterInput} 
                 keyboardType="numeric"
-                value={currentProgressValue === 0 ? '' : currentProgressValue.toString()}
+                // ИСПРАВЛЕНО: Всегда передаем строку "0", если в стейте ноль, чтобы Android не прятал клавиатуру мгновенно
+                value={currentProgressValue.toString()} 
                 placeholder="0"
                 placeholderTextColor="#222"
                 onChangeText={handleUpdateProgress}
                 underlineColorAndroid="transparent"
                 blurOnSubmit={false}
+                selectTextOnFocus={true} // При тапе весь ноль сразу выделится, и его можно будет мгновенно затереть своей цифрой
               />
             ) : (
               <Text style={[styles.bigCounterInput, { color: '#999' }]}>0</Text>
@@ -269,7 +265,7 @@ export default function App() {
               </View>
             )}
           </View>
-          <TouchableOpacity style={styles.darkButton} onPress={() => setScreen('library')}><Text style={styles.darkButtonText}>НАЗАД В БИБЛИОТЕКУ</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.darkButton} onPress={() => { Keyboard.dismiss(); setScreen('library'); }}><Text style={styles.darkButtonText}>НАЗАД В БИБЛИОТЕКУ</Text></TouchableOpacity>
         </View>
       )}
     </View>
