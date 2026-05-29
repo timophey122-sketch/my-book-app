@@ -11,7 +11,7 @@ import {
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const STORAGE_KEY = 'my_book_tracker_fixed';
+const STORAGE_KEY = 'BOOK_TRACKER_ANDROID_FIXED';
 
 const months = [
   'ЯНВАРЬ',
@@ -53,9 +53,10 @@ export default function App() {
 
   const [currentDate, setCurrentDate] = useState(new Date());
 
-  const [selectedDayOffset, setSelectedDayOffset] = useState(0);
+  const [selectedDayOffset, setSelectedDayOffset] =
+    useState(0);
 
-  // FIX КЛАВИАТУРЫ
+  // ANDROID FIX
   const [inputValue, setInputValue] = useState('');
 
   useEffect(() => {
@@ -64,7 +65,9 @@ export default function App() {
 
   const loadBooks = async () => {
     try {
-      const saved = await AsyncStorage.getItem(STORAGE_KEY);
+      const saved = await AsyncStorage.getItem(
+        STORAGE_KEY
+      );
 
       if (saved) {
         const parsed = JSON.parse(saved);
@@ -76,7 +79,10 @@ export default function App() {
         }
       }
     } catch (e) {
-      Alert.alert('Ошибка', 'Не удалось загрузить');
+      Alert.alert(
+        'Ошибка',
+        'Не удалось загрузить книги'
+      );
     }
   };
 
@@ -89,12 +95,24 @@ export default function App() {
 
       setBooks(updatedBooks);
     } catch (e) {
-      Alert.alert('Ошибка', 'Не удалось сохранить');
+      Alert.alert(
+        'Ошибка',
+        'Не удалось сохранить'
+      );
     }
   };
 
+  const resetForm = () => {
+    setBookTitle('');
+    setTotalPages('');
+    setDailyNorm('');
+    setEditingBookId(null);
+  };
+
   const activeBook = useMemo(() => {
-    return books.find((b) => b.id === selectedBookId);
+    return books.find(
+      (b) => b.id === selectedBookId
+    );
   }, [books, selectedBookId]);
 
   const getWeekDays = () => {
@@ -133,6 +151,7 @@ export default function App() {
   const currentProgressValue =
     activeBook?.progress?.[selectedDateKey] || 0;
 
+  // FIX INPUT
   useEffect(() => {
     if (currentProgressValue === 0) {
       setInputValue('');
@@ -162,13 +181,6 @@ export default function App() {
 
   const isBookFinished =
     activeBook && leftPages === 0;
-
-  const resetForm = () => {
-    setBookTitle('');
-    setTotalPages('');
-    setDailyNorm('');
-    setEditingBookId(null);
-  };
 
   const handleSaveBook = () => {
     if (
@@ -247,6 +259,7 @@ export default function App() {
         {
           text: 'Удалить',
           style: 'destructive',
+
           onPress: () => {
             const updated = books.filter(
               (b) => b.id !== id
@@ -291,7 +304,7 @@ export default function App() {
     setCurrentDate(nextMonth);
   };
 
-  // FIX ANDROID КЛАВИАТУРЫ
+  // ГЛАВНЫЙ FIX
   const handleUpdateProgress = (text) => {
     if (isFuture || !activeBook) return;
 
@@ -301,15 +314,21 @@ export default function App() {
 
     let readWithoutToday = 0;
 
-    Object.keys(activeBook.progress || {}).forEach((key) => {
-      if (key !== selectedDateKey) {
-        readWithoutToday +=
-          parseInt(activeBook.progress[key], 10) || 0;
+    Object.keys(activeBook.progress || {}).forEach(
+      (key) => {
+        if (key !== selectedDateKey) {
+          readWithoutToday +=
+            parseInt(
+              activeBook.progress[key],
+              10
+            ) || 0;
+        }
       }
-    });
+    );
 
     const maxAvailable =
-      activeBook.totalPages - readWithoutToday;
+      activeBook.totalPages -
+      readWithoutToday;
 
     if (entered > maxAvailable) {
       entered = maxAvailable;
@@ -325,8 +344,10 @@ export default function App() {
       if (b.id === selectedBookId) {
         return {
           ...b,
+
           progress: {
             ...(b.progress || {}),
+
             [selectedDateKey]: entered,
           },
         };
@@ -340,6 +361,8 @@ export default function App() {
 
   return (
     <View style={styles.container}>
+      {/* LIBRARY */}
+
       {screen === 'library' && (
         <View style={styles.innerWrapper}>
           <Text style={styles.screenTitle}>
@@ -348,7 +371,6 @@ export default function App() {
 
           <ScrollView
             style={styles.scrollList}
-            keyboardShouldPersistTaps="always"
           >
             {books.map((item) => {
               const itemRead = Object.values(
@@ -371,11 +393,14 @@ export default function App() {
                   style={styles.bookCard}
                   onPress={() => {
                     setSelectedBookId(item.id);
+
                     setScreen('calendar');
                   }}
                 >
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.bookCardTitle}>
+                    <Text
+                      style={styles.bookCardTitle}
+                    >
                       {item.title}
                     </Text>
 
@@ -385,23 +410,29 @@ export default function App() {
                           styles.bookCardFinishedText
                         }
                       >
-                        Прочитано! 🎉
+                        Прочитано 🎉
                       </Text>
                     ) : (
-                      <Text style={styles.bookCardSub}>
+                      <Text
+                        style={styles.bookCardSub}
+                      >
                         Осталось: {itemLeft} стр
                       </Text>
                     )}
                   </View>
 
-                  <View style={styles.cardActions}>
+                  <View
+                    style={styles.cardActions}
+                  >
                     <TouchableOpacity
                       style={styles.iconBtn}
                       onPress={() =>
                         openEditBook(item)
                       }
                     >
-                      <Text style={{ fontSize: 18 }}>
+                      <Text
+                        style={{ fontSize: 18 }}
+                      >
                         ✏️
                       </Text>
                     </TouchableOpacity>
@@ -412,7 +443,9 @@ export default function App() {
                         handleDeleteBook(item.id)
                       }
                     >
-                      <Text style={{ fontSize: 18 }}>
+                      <Text
+                        style={{ fontSize: 18 }}
+                      >
                         🗑️
                       </Text>
                     </TouchableOpacity>
@@ -428,12 +461,16 @@ export default function App() {
               setScreen('new_book')
             }
           >
-            <Text style={styles.dashedButtonText}>
+            <Text
+              style={styles.dashedButtonText}
+            >
               + НОВАЯ КНИГА
             </Text>
           </TouchableOpacity>
         </View>
       )}
+
+      {/* CREATE / EDIT */}
 
       {(screen === 'new_book' ||
         screen === 'edit_book') && (
@@ -446,7 +483,11 @@ export default function App() {
 
           <View style={styles.formContainer}>
             <View style={styles.inputBlock}>
-              <Text style={styles.inputPlaceholder}>
+              <Text
+                style={
+                  styles.inputPlaceholder
+                }
+              >
                 Название
               </Text>
 
@@ -458,7 +499,11 @@ export default function App() {
             </View>
 
             <View style={styles.inputBlock}>
-              <Text style={styles.inputPlaceholder}>
+              <Text
+                style={
+                  styles.inputPlaceholder
+                }
+              >
                 Всего страниц
               </Text>
 
@@ -468,14 +513,21 @@ export default function App() {
                 value={totalPages}
                 onChangeText={(text) =>
                   setTotalPages(
-                    text.replace(/[^0-9]/g, '')
+                    text.replace(
+                      /[^0-9]/g,
+                      ''
+                    )
                   )
                 }
               />
             </View>
 
             <View style={styles.inputBlock}>
-              <Text style={styles.inputPlaceholder}>
+              <Text
+                style={
+                  styles.inputPlaceholder
+                }
+              >
                 Норма в день
               </Text>
 
@@ -485,18 +537,25 @@ export default function App() {
                 value={dailyNorm}
                 onChangeText={(text) =>
                   setDailyNorm(
-                    text.replace(/[^0-9]/g, '')
+                    text.replace(
+                      /[^0-9]/g,
+                      ''
+                    )
                   )
                 }
               />
             </View>
 
             <TouchableOpacity
-              style={styles.orangeSolidButton}
+              style={
+                styles.orangeSolidButton
+              }
               onPress={handleSaveBook}
             >
               <Text
-                style={styles.orangeSolidButtonText}
+                style={
+                  styles.orangeSolidButtonText
+                }
               >
                 СОХРАНИТЬ
               </Text>
@@ -506,16 +565,21 @@ export default function App() {
               style={styles.cancelLink}
               onPress={() => {
                 resetForm();
+
                 setScreen('library');
               }}
             >
-              <Text style={styles.cancelLinkText}>
+              <Text
+                style={styles.cancelLinkText}
+              >
                 Отмена
               </Text>
             </TouchableOpacity>
           </View>
         </View>
       )}
+
+      {/* CALENDAR */}
 
       {screen === 'calendar' && (
         <View style={styles.innerWrapper}>
@@ -556,13 +620,15 @@ export default function App() {
                 selectedDayOffset === idx;
 
               const isToday =
-                formatDateKey(day) === todayKey;
+                formatDateKey(day) ===
+                todayKey;
 
               return (
                 <TouchableOpacity
                   key={idx}
                   style={[
                     styles.dayCircle,
+
                     isToday &&
                       styles.todayGreenCircle,
                   ]}
@@ -570,7 +636,9 @@ export default function App() {
                     setSelectedDayOffset(idx)
                   }
                 >
-                  <Text style={styles.dayWeekText}>
+                  <Text
+                    style={styles.dayWeekText}
+                  >
                     {
                       daysOfWeek[
                         day.getDay()
@@ -578,26 +646,34 @@ export default function App() {
                     }
                   </Text>
 
-                  <Text style={styles.dayNumText}>
+                  <Text
+                    style={styles.dayNumText}
+                  >
                     {day.getDate()}
                   </Text>
 
                   {isSelected && (
-                    <View style={styles.underLine} />
+                    <View
+                      style={styles.underLine}
+                    />
                   )}
                 </TouchableOpacity>
               );
             })}
           </View>
 
-          <Text style={styles.calendarBookTitle}>
-            {activeBook?.title || 'Без книги'}
+          <Text
+            style={styles.calendarBookTitle}
+          >
+            {activeBook?.title ||
+              'Без книги'}
           </Text>
 
           <Text style={styles.calendarBookSub}>
             Осталось: {leftPages} стр |
             Норма:{' '}
-            {activeBook?.dailyNorm || 0} стр
+            {activeBook?.dailyNorm || 0}{' '}
+            стр
           </Text>
 
           <Text style={styles.statusMessage}>
@@ -606,32 +682,48 @@ export default function App() {
               : 'СКОЛЬКО ПРОЧИТАЛ СЕГОДНЯ?'}
           </Text>
 
-          <View style={styles.counterContainer}>
+          <View
+            style={styles.counterContainer}
+          >
             <TextInput
               style={[
                 styles.bigCounterInput,
-                isFuture && { color: '#999' },
+
+                isFuture && {
+                  color: '#999',
+                },
               ]}
-              keyboardType="numeric"
+              keyboardType="number-pad"
               value={inputValue}
               onChangeText={(text) => {
-                setInputValue(text);
+                const clean =
+                  text.replace(
+                    /[^0-9]/g,
+                    ''
+                  );
+
+                setInputValue(clean);
               }}
-              onEndEditing={() => {
-                handleUpdateProgress(inputValue);
+              onBlur={() => {
+                handleUpdateProgress(
+                  inputValue
+                );
               }}
               placeholder="0"
-              placeholderTextColor="#222"
+              placeholderTextColor="#555"
               editable={!isFuture}
-              blurOnSubmit={false}
               multiline={false}
+              blurOnSubmit={false}
               autoCorrect={false}
               autoCapitalize="none"
               disableFullscreenUI={true}
+              selectionColor="#000"
             />
 
             {isBookFinished && (
-              <View style={styles.congratsBlock}>
+              <View
+                style={styles.congratsBlock}
+              >
                 <Text
                   style={{
                     fontSize: 44,
@@ -641,8 +733,11 @@ export default function App() {
                   🎉
                 </Text>
 
-                <Text style={styles.congratsText}>
-                  Поздравляю! Ты прочитал книгу!
+                <Text
+                  style={styles.congratsText}
+                >
+                  Поздравляю! Книга
+                  прочитана!
                 </Text>
               </View>
             )}
@@ -650,11 +745,13 @@ export default function App() {
 
           <TouchableOpacity
             style={styles.darkButton}
-            onPress={() => {
-              setScreen('library');
-            }}
+            onPress={() =>
+              setScreen('library')
+            }
           >
-            <Text style={styles.darkButtonText}>
+            <Text
+              style={styles.darkButtonText}
+            >
               НАЗАД В БИБЛИОТЕКУ
             </Text>
           </TouchableOpacity>
@@ -667,62 +764,87 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+
     backgroundColor: '#fff',
+
     paddingHorizontal: 25,
+
     paddingTop: 50,
   },
 
   innerWrapper: {
     width: '100%',
+
     flex: 1,
+
     alignItems: 'center',
   },
 
   screenTitle: {
     fontSize: 28,
+
     fontWeight: 'bold',
+
     color: '#000',
+
     textAlign: 'center',
+
     marginTop: 20,
+
     marginBottom: 30,
   },
 
   scrollList: {
     width: '100%',
+
     flex: 1,
+
     marginBottom: 15,
   },
 
   bookCard: {
     backgroundColor: '#f7f7f7',
+
     padding: 18,
+
     borderRadius: 16,
+
     flexDirection: 'row',
+
     alignItems: 'center',
+
     marginBottom: 12,
+
     width: '100%',
   },
 
   bookCardTitle: {
     fontSize: 22,
+
     fontWeight: 'bold',
+
     color: '#000',
+
     marginBottom: 4,
   },
 
   bookCardSub: {
     fontSize: 14,
+
     color: '#8e8e93',
   },
 
   bookCardFinishedText: {
     fontSize: 14,
+
     color: '#28a745',
+
     fontWeight: 'bold',
   },
 
   cardActions: {
     flexDirection: 'row',
+
     gap: 12,
   },
 
@@ -732,202 +854,300 @@ const styles = StyleSheet.create({
 
   dashedButton: {
     width: '100%',
+
     borderStyle: 'dashed',
+
     borderWidth: 1.5,
+
     borderColor: '#ff9f00',
+
     borderRadius: 18,
+
     paddingVertical: 16,
+
     alignItems: 'center',
+
     justifyContent: 'center',
+
     marginBottom: 65,
   },
 
   dashedButtonText: {
     color: '#ff9f00',
+
     fontSize: 16,
+
     fontWeight: 'bold',
   },
 
   formContainer: {
     width: '100%',
+
     alignItems: 'center',
+
     marginTop: 10,
   },
 
   inputBlock: {
     width: '100%',
+
     marginBottom: 20,
   },
 
   inputPlaceholder: {
     fontSize: 16,
+
     color: '#000',
+
     marginBottom: 2,
+
     paddingLeft: 2,
   },
 
   borderInput: {
     width: '100%',
+
     borderBottomWidth: 1.5,
+
     borderBottomColor: '#ff9f00',
+
     fontSize: 18,
+
     paddingVertical: 4,
+
     color: '#000',
   },
 
   orangeSolidButton: {
     backgroundColor: '#ff9f00',
+
     width: '100%',
+
     borderRadius: 16,
+
     paddingVertical: 16,
+
     alignItems: 'center',
+
     marginTop: 20,
   },
 
   orangeSolidButtonText: {
     color: '#fff',
+
     fontSize: 16,
+
     fontWeight: 'bold',
   },
 
   cancelLink: {
     marginTop: 22,
+
     padding: 5,
   },
 
   cancelLinkText: {
     color: '#8e8e93',
+
     fontSize: 15,
   },
 
   monthHeader: {
     flexDirection: 'row',
+
     alignItems: 'center',
+
     justifyContent: 'center',
+
     gap: 20,
+
     marginVertical: 20,
+
     width: '100%',
   },
 
   arrow: {
     fontSize: 18,
+
     color: '#ff9f00',
+
     paddingHorizontal: 10,
   },
 
   monthText: {
     fontSize: 20,
+
     fontWeight: 'bold',
+
     color: '#000',
   },
 
   weekContainer: {
     flexDirection: 'row',
+
     justifyContent: 'space-between',
+
     width: '100%',
+
     marginBottom: 25,
   },
 
   dayCircle: {
     width: 44,
+
     height: 44,
+
     borderRadius: 22,
+
     alignItems: 'center',
+
     justifyContent: 'center',
+
     backgroundColor: '#f2f2f7',
   },
 
   todayGreenCircle: {
     borderWidth: 2.5,
+
     borderColor: '#006400',
+
     backgroundColor: '#fff',
   },
 
   dayWeekText: {
     fontSize: 10,
+
     color: '#3a3a3c',
+
     fontWeight: '500',
   },
 
   dayNumText: {
     fontSize: 14,
+
     color: '#3a3a3c',
+
     fontWeight: '600',
+
     marginTop: 1,
   },
 
   underLine: {
     width: 16,
+
     height: 3.5,
+
     backgroundColor: '#000',
+
     position: 'absolute',
+
     bottom: -12,
+
     borderRadius: 2,
   },
 
   calendarBookTitle: {
     fontSize: 32,
+
     fontWeight: 'bold',
+
     color: '#000',
+
     marginTop: 15,
+
     marginBottom: 12,
   },
 
   calendarBookSub: {
     fontSize: 16,
+
     color: '#000',
+
     marginBottom: 25,
   },
 
   statusMessage: {
     fontSize: 15,
+
     color: '#8e8e93',
+
     marginBottom: 15,
   },
 
   counterContainer: {
     flex: 1,
+
     justifyContent: 'flex-start',
+
     paddingTop: 10,
+
     alignItems: 'center',
+
     width: '100%',
   },
 
+  // ГЛАВНЫЙ FIX
   bigCounterInput: {
-    fontSize: 80,
-    fontWeight: '500',
+    width: '100%',
+
+    minHeight: 120,
+
+    fontSize: 72,
+
+    fontWeight: '600',
+
     color: '#000',
+
     textAlign: 'center',
-    minWidth: 220,
-    padding: 0,
+
+    paddingVertical: 10,
+
+    paddingHorizontal: 20,
+
+    includeFontPadding: false,
+
+    textAlignVertical: 'center',
   },
 
   congratsBlock: {
     alignItems: 'center',
+
     marginTop: 0,
+
     marginBottom: 10,
   },
 
   congratsText: {
     fontSize: 18,
+
     fontWeight: 'bold',
+
     color: '#000',
+
     textAlign: 'center',
   },
 
   darkButton: {
     backgroundColor: '#2c2c2e',
+
     width: '100%',
+
     borderRadius: 16,
+
     paddingVertical: 18,
+
     alignItems: 'center',
+
     marginBottom: 65,
+
     alignSelf: 'center',
   },
 
   darkButtonText: {
     color: '#fff',
+
     fontSize: 15,
+
     fontWeight: 'bold',
   },
 });
