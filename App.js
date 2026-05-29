@@ -1,18 +1,17 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Alert,
-  Keyboard,
-  ScrollView,
   StyleSheet,
   Text,
+  View,
   TextInput,
   TouchableOpacity,
-  View,
+  ScrollView,
+  Alert,
 } from 'react-native';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const STORAGE_KEY = 'book_tracker_fixed';
+const STORAGE_KEY = 'my_book_tracker_fixed';
 
 const months = [
   'ЯНВАРЬ',
@@ -31,12 +30,12 @@ const months = [
 
 const daysOfWeek = ['ВС', 'ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ'];
 
-const formatDateKey = (date) => {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
+const formatDateKey = (dateObj) => {
+  const year = dateObj.getFullYear();
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getDate()).padStart(2, '0');
 
-  return `${y}-${m}-${d}`;
+  return `${year}-${month}-${day}`;
 };
 
 export default function App() {
@@ -67,14 +66,14 @@ export default function App() {
     try {
       const saved = await AsyncStorage.getItem(STORAGE_KEY);
 
-      if (!saved) return;
+      if (saved) {
+        const parsed = JSON.parse(saved);
 
-      const parsed = JSON.parse(saved);
+        setBooks(parsed);
 
-      setBooks(parsed);
-
-      if (parsed.length > 0) {
-        setSelectedBookId(parsed[0].id);
+        if (parsed.length > 0) {
+          setSelectedBookId(parsed[0].id);
+        }
       }
     } catch (e) {
       Alert.alert('Ошибка', 'Не удалось загрузить');
@@ -83,12 +82,12 @@ export default function App() {
 
   const saveBooks = async (updatedBooks) => {
     try {
-      setBooks(updatedBooks);
-
       await AsyncStorage.setItem(
         STORAGE_KEY,
         JSON.stringify(updatedBooks)
       );
+
+      setBooks(updatedBooks);
     } catch (e) {
       Alert.alert('Ошибка', 'Не удалось сохранить');
     }
@@ -134,7 +133,6 @@ export default function App() {
   const currentProgressValue =
     activeBook?.progress?.[selectedDateKey] || 0;
 
-  // FIX INPUT
   useEffect(() => {
     if (currentProgressValue === 0) {
       setInputValue('');
@@ -293,42 +291,30 @@ export default function App() {
     setCurrentDate(nextMonth);
   };
 
-  // FIX ЛИМИТА СТРАНИЦ
+  // FIX ANDROID КЛАВИАТУРЫ
   const handleUpdateProgress = (text) => {
-    if (!activeBook || isFuture) return;
+    if (isFuture || !activeBook) return;
 
-    const clean = text.replace(
-      /[^0-9]/g,
-      ''
-    );
+    const clean = text.replace(/[^0-9]/g, '');
 
-    let entered =
-      parseInt(clean, 10) || 0;
+    let entered = parseInt(clean, 10) || 0;
 
     let readWithoutToday = 0;
 
-    Object.keys(
-      activeBook.progress || {}
-    ).forEach((key) => {
+    Object.keys(activeBook.progress || {}).forEach((key) => {
       if (key !== selectedDateKey) {
         readWithoutToday +=
-          parseInt(
-            activeBook.progress[key],
-            10
-          ) || 0;
+          parseInt(activeBook.progress[key], 10) || 0;
       }
     });
 
     const maxAvailable =
-      activeBook.totalPages -
-      readWithoutToday;
+      activeBook.totalPages - readWithoutToday;
 
-    // ЛИМИТ
     if (entered > maxAvailable) {
       entered = maxAvailable;
     }
 
-    // FIX КЛАВИАТУРЫ
     setInputValue(
       entered === 0
         ? ''
@@ -389,11 +375,7 @@ export default function App() {
                   }}
                 >
                   <View style={{ flex: 1 }}>
-                    <Text
-                      style={
-                        styles.bookCardTitle
-                      }
-                    >
+                    <Text style={styles.bookCardTitle}>
                       {item.title}
                     </Text>
 
@@ -406,11 +388,7 @@ export default function App() {
                         Прочитано! 🎉
                       </Text>
                     ) : (
-                      <Text
-                        style={
-                          styles.bookCardSub
-                        }
-                      >
+                      <Text style={styles.bookCardSub}>
                         Осталось: {itemLeft} стр
                       </Text>
                     )}
@@ -423,11 +401,7 @@ export default function App() {
                         openEditBook(item)
                       }
                     >
-                      <Text
-                        style={{
-                          fontSize: 18,
-                        }}
-                      >
+                      <Text style={{ fontSize: 18 }}>
                         ✏️
                       </Text>
                     </TouchableOpacity>
@@ -438,11 +412,7 @@ export default function App() {
                         handleDeleteBook(item.id)
                       }
                     >
-                      <Text
-                        style={{
-                          fontSize: 18,
-                        }}
-                      >
+                      <Text style={{ fontSize: 18 }}>
                         🗑️
                       </Text>
                     </TouchableOpacity>
@@ -458,9 +428,7 @@ export default function App() {
               setScreen('new_book')
             }
           >
-            <Text
-              style={styles.dashedButtonText}
-            >
+            <Text style={styles.dashedButtonText}>
               + НОВАЯ КНИГА
             </Text>
           </TouchableOpacity>
@@ -478,11 +446,7 @@ export default function App() {
 
           <View style={styles.formContainer}>
             <View style={styles.inputBlock}>
-              <Text
-                style={
-                  styles.inputPlaceholder
-                }
-              >
+              <Text style={styles.inputPlaceholder}>
                 Название
               </Text>
 
@@ -494,11 +458,7 @@ export default function App() {
             </View>
 
             <View style={styles.inputBlock}>
-              <Text
-                style={
-                  styles.inputPlaceholder
-                }
-              >
+              <Text style={styles.inputPlaceholder}>
                 Всего страниц
               </Text>
 
@@ -508,21 +468,14 @@ export default function App() {
                 value={totalPages}
                 onChangeText={(text) =>
                   setTotalPages(
-                    text.replace(
-                      /[^0-9]/g,
-                      ''
-                    )
+                    text.replace(/[^0-9]/g, '')
                   )
                 }
               />
             </View>
 
             <View style={styles.inputBlock}>
-              <Text
-                style={
-                  styles.inputPlaceholder
-                }
-              >
+              <Text style={styles.inputPlaceholder}>
                 Норма в день
               </Text>
 
@@ -532,10 +485,7 @@ export default function App() {
                 value={dailyNorm}
                 onChangeText={(text) =>
                   setDailyNorm(
-                    text.replace(
-                      /[^0-9]/g,
-                      ''
-                    )
+                    text.replace(/[^0-9]/g, '')
                   )
                 }
               />
@@ -546,9 +496,7 @@ export default function App() {
               onPress={handleSaveBook}
             >
               <Text
-                style={
-                  styles.orangeSolidButtonText
-                }
+                style={styles.orangeSolidButtonText}
               >
                 СОХРАНИТЬ
               </Text>
@@ -561,9 +509,7 @@ export default function App() {
                 setScreen('library');
               }}
             >
-              <Text
-                style={styles.cancelLinkText}
-              >
+              <Text style={styles.cancelLinkText}>
                 Отмена
               </Text>
             </TouchableOpacity>
@@ -610,8 +556,7 @@ export default function App() {
                 selectedDayOffset === idx;
 
               const isToday =
-                formatDateKey(day) ===
-                todayKey;
+                formatDateKey(day) === todayKey;
 
               return (
                 <TouchableOpacity
@@ -622,16 +567,10 @@ export default function App() {
                       styles.todayGreenCircle,
                   ]}
                   onPress={() =>
-                    setSelectedDayOffset(
-                      idx
-                    )
+                    setSelectedDayOffset(idx)
                   }
                 >
-                  <Text
-                    style={
-                      styles.dayWeekText
-                    }
-                  >
+                  <Text style={styles.dayWeekText}>
                     {
                       daysOfWeek[
                         day.getDay()
@@ -639,85 +578,71 @@ export default function App() {
                     }
                   </Text>
 
-                  <Text
-                    style={
-                      styles.dayNumText
-                    }
-                  >
+                  <Text style={styles.dayNumText}>
                     {day.getDate()}
                   </Text>
 
                   {isSelected && (
-                    <View
-                      style={
-                        styles.underLine
-                      }
-                    />
+                    <View style={styles.underLine} />
                   )}
                 </TouchableOpacity>
               );
             })}
           </View>
 
-          <Text
-            style={styles.calendarBookTitle}
-          >
-            {activeBook?.title ||
-              'Без книги'}
+          <Text style={styles.calendarBookTitle}>
+            {activeBook?.title || 'Без книги'}
           </Text>
 
-          <Text
-            style={styles.calendarBookSub}
-          >
+          <Text style={styles.calendarBookSub}>
             Осталось: {leftPages} стр |
             Норма:{' '}
-            {activeBook?.dailyNorm || 0}{' '}
-            стр
+            {activeBook?.dailyNorm || 0} стр
           </Text>
 
-          <Text
-            style={styles.statusMessage}
-          >
+          <Text style={styles.statusMessage}>
             {isFuture
               ? 'ПИСАТЬ В БУДУЩЕЕ НЕЛЬЗЯ'
               : 'СКОЛЬКО ПРОЧИТАЛ СЕГОДНЯ?'}
           </Text>
 
-          <View
-            style={styles.counterContainer}
-          >
+          <View style={styles.counterContainer}>
             <TextInput
-              style={styles.bigCounterInput}
+              style={[
+                styles.bigCounterInput,
+                isFuture && { color: '#999' },
+              ]}
               keyboardType="numeric"
               value={inputValue}
-              onChangeText={
-                handleUpdateProgress
-              }
+              onChangeText={(text) => {
+                setInputValue(text);
+              }}
+              onEndEditing={() => {
+                handleUpdateProgress(inputValue);
+              }}
               placeholder="0"
               placeholderTextColor="#222"
               editable={!isFuture}
               blurOnSubmit={false}
+              multiline={false}
+              autoCorrect={false}
+              autoCapitalize="none"
+              disableFullscreenUI={true}
             />
 
             {isBookFinished && (
-              <View
-                style={styles.congratsBlock}
-              >
+              <View style={styles.congratsBlock}>
                 <Text
                   style={{
                     fontSize: 44,
+                    marginBottom: 5,
                   }}
                 >
                   🎉
                 </Text>
 
-                <Text
-                  style={
-                    styles.congratsText
-                  }
-                >
-                  Поздравляю! Книга
-                  прочитана!
+                <Text style={styles.congratsText}>
+                  Поздравляю! Ты прочитал книгу!
                 </Text>
               </View>
             )}
@@ -726,13 +651,10 @@ export default function App() {
           <TouchableOpacity
             style={styles.darkButton}
             onPress={() => {
-              Keyboard.dismiss();
               setScreen('library');
             }}
           >
-            <Text
-              style={styles.darkButtonText}
-            >
+            <Text style={styles.darkButtonText}>
               НАЗАД В БИБЛИОТЕКУ
             </Text>
           </TouchableOpacity>
