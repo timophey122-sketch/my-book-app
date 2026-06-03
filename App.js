@@ -190,7 +190,10 @@ export default function App() {
     ) {
       return Alert.alert(
         'Ошибка',
-        'Заполните все поля'
+21:11
+
+
+'Заполните все поля'
       );
     }
 
@@ -392,7 +395,8 @@ export default function App() {
                   key={item.id}
                   style={styles.bookCard}
                   onPress={() => {
-                    setSelectedBookId(item.id);
+21:11
+setSelectedBookId(item.id);
 
                     setScreen('calendar');
                   }}
@@ -410,7 +414,7 @@ export default function App() {
                           styles.bookCardFinishedText
                         }
                       >
-                        Прочитано 🎉
+                        Прочитано 🎉 
                       </Text>
                     ) : (
                       <Text
@@ -433,7 +437,7 @@ export default function App() {
                       <Text
                         style={{ fontSize: 18 }}
                       >
-                        ✏️
+                        ✏️ 
                       </Text>
                     </TouchableOpacity>
 
@@ -446,7 +450,7 @@ export default function App() {
                       <Text
                         style={{ fontSize: 18 }}
                       >
-                        🗑️
+                        🗑️ 
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -536,7 +540,8 @@ export default function App() {
                 keyboardType="numeric"
                 value={dailyNorm}
                 onChangeText={(text) =>
-                  setDailyNorm(
+21:11
+setDailyNorm(
                     text.replace(
                       /[^0-9]/g,
                       ''
@@ -695,14 +700,12 @@ export default function App() {
               ]}
               keyboardType="number-pad"
               value={inputValue}
-              onChangeText={(text) => {
-                const clean =
-                  text.replace(
-                    /[^0-9]/g,
-                    ''
-                  );
-
-                setInputValue(clean);
+21:11
+onChangeText={(text) => {
+                // Проверка лимита и сохранение
+                // теперь на КАЖДЫЙ ввод символа,
+                // а не только при потере фокуса.
+                handleUpdateProgress(text);
               }}
               onBlur={() => {
                 handleUpdateProgress(
@@ -730,7 +733,7 @@ export default function App() {
                     marginBottom: 5,
                   }}
                 >
-                  🎉
+                  🎉 
                 </Text>
 
                 <Text
@@ -967,7 +970,8 @@ const styles = StyleSheet.create({
   },
 
   arrow: {
-    fontSize: 18,
+21:11
+fontSize: 18,
 
     color: '#ff9f00',
 
