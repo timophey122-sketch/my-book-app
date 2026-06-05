@@ -1,6 +1,6 @@
 {
   "build": {
-    "Preview": {
+    "preview": {
       "android": {
         "buildType": "apk"
       }
