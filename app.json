@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "my-book-app",
-    "slug": "my-book-app",
+    "name": "My Book Tracker",
+    "slug": "My Book Tracker",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
