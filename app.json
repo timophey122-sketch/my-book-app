@@ -4,7 +4,7 @@
     "slug": "my-book-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/my-book-tracker-icon.png",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
