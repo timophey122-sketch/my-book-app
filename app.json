@@ -4,25 +4,27 @@
     "slug": "my-book-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "icon": "./assets/images/icon.png",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
+      "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#fbf7ef"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.tirka.mybooktracker"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#fbf7ef"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.tirka.snack194d31ffd8be41a68d68f8ac0064d5ac"
+      "package": "com.tirka.mybooktracker"
     },
-    "web": {
-    },
+    "web": {},
     "extra": {
       "eas": {
         "projectId": "a133ed13-d47d-47d5-affb-5e72f75a542c"
