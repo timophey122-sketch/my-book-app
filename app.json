@@ -4,11 +4,10 @@
     "slug": "my-book-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./icon.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#fbf7ef"
     },
@@ -17,10 +16,6 @@
       "bundleIdentifier": "com.tirka.mybooktracker"
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#fbf7ef"
-      },
       "edgeToEdgeEnabled": true,
       "package": "com.tirka.mybooktracker"
     },
