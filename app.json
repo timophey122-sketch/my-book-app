@@ -1,29 +1,18 @@
 {
   "expo": {
-    "name": "My Book Tracker",
-    "slug": "my-book-app",
-    "version": "1.0.0",
+    "name": "My Book Tracker Family 2",
+    "slug": "my-book-tracker-family",
+    "version": "1.0.27",
     "orientation": "portrait",
-    "icon": "./icon.png",
-    "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
-    "splash": {
-      "resizeMode": "contain",
-      "backgroundColor": "#fbf7ef"
+    "userInterfaceStyle": "light",
+    "plugins": ["expo-notifications"],
+    "android": {
+      "package": "com.timophey.MyBookTrackerFamilyRecovered",
+      "versionCode": 28
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.tirka.mybooktracker"
-    },
-    "android": {
-      "edgeToEdgeEnabled": true,
-      "package": "com.tirka.mybooktracker"
-    },
-    "web": {},
-    "extra": {
-      "eas": {
-        "projectId": "a133ed13-d47d-47d5-affb-5e72f75a542c"
-      }
+      "bundleIdentifier": "com.timophey.MyBookTrackerFamilyRecovered"
     }
   }
 }
