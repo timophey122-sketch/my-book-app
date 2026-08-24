@@ -2,13 +2,15 @@
   "expo": {
     "name": "My Book Tracker Family 2",
     "slug": "my-book-tracker-family",
-    "version": "1.0.27",
+    "version": "1.0.30",
+    "icon": "./assets/family-reading-wallpaper-two-colors.png",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "plugins": ["expo-notifications"],
     "android": {
       "package": "com.timophey.MyBookTrackerFamilyRecovered",
-      "versionCode": 28
+      "versionCode": 31,
+      "icon": "./assets/family-reading-wallpaper-two-colors.png"
     },
     "ios": {
       "supportsTablet": true,

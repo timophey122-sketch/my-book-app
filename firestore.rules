@@ -1,0 +1,41 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function profileData() { return get(/databases/$(database)/documents/deviceProfiles/$(request.auth.uid)).data; }
+    function sameFamily(data) {
+      return signedIn() && (
+        data.authUid == request.auth.uid ||
+        data.familyId == request.auth.uid ||
+        exists(/databases/$(database)/documents/deviceProfiles/$(request.auth.uid)) && data.familyId == profileData().familyId
+      );
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update: if signedIn() && (resource.data.authUid == request.auth.uid || request.resource.data.authUid == request.auth.uid || userId == request.auth.uid);
+    }
+    match /deviceProfiles/{deviceId} {
+      allow read, create, update: if signedIn() && deviceId == request.auth.uid;
+    }
+    match /books/{bookId} {
+      allow read: if sameFamily(resource.data);
+      allow create: if sameFamily(request.resource.data);
+      allow update, delete: if sameFamily(resource.data);
+    }
+    match /events/{eventId} {
+      allow read: if sameFamily(resource.data);
+      allow create: if sameFamily(request.resource.data);
+    }
+    match /rewards/{rewardId} {
+      allow read: if sameFamily(resource.data);
+      allow create: if sameFamily(request.resource.data);
+      allow update, delete: if sameFamily(resource.data);
+    }
+    match /quizAttempts/{attemptId} {
+      allow read: if sameFamily(resource.data);
+      allow create: if sameFamily(request.resource.data);
+    }
+  }
+}

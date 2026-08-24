@@ -9,7 +9,7 @@ const firebaseConfig = {
   projectId: 'my-book-tracker-family',
   storageBucket: 'my-book-tracker-family.firebasestorage.app',
   messagingSenderId: '1082409487344',
-  appId: '1:1082409487344:android:bfe5d4ebc49a00b4442b35',
+  appId: '1:1082409487344:android:240f7ed230376d38442b35',
 };
 
 export const firebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
