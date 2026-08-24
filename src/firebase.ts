@@ -3,7 +3,7 @@ import { getApp, getApps, initializeApp } from 'firebase/app';
 import * as FirebaseAuth from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: 'AIzaSyDcEM_1pEdV2JwQu5doTMTfFdPi3zlw-Uo',
   authDomain: 'my-book-tracker-family.firebaseapp.com',
   projectId: 'my-book-tracker-family',

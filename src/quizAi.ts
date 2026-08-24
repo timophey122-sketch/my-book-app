@@ -1,5 +1,4 @@
-import { getAI, getGenerativeModel, GoogleAIBackend } from 'firebase/ai';
-import { firebaseApp } from './firebase';
+import { firebaseConfig } from './firebase';
 
 export type GeneratedQuizQuestion = {
   prompt: string;
@@ -33,16 +32,44 @@ const quizSchema = {
   required: ['questions'],
 };
 
-const ai = getAI(firebaseApp, { backend: new GoogleAIBackend() });
-const quizModel = getGenerativeModel(ai, {
-  model: 'gemini-3.5-flash-lite',
-  generationConfig: {
-    temperature: 0.8,
-    maxOutputTokens: 2200,
-    responseMimeType: 'application/json',
-    responseJsonSchema: quizSchema,
-  },
-});
+const MODEL_NAMES = ['gemini-3.5-flash-lite', 'gemini-2.5-flash-lite'];
+
+async function requestQuiz(prompt: string, model: string): Promise<unknown> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 60000);
+  try {
+    const response = await fetch(
+      `https://firebasevertexai.googleapis.com/v1beta/projects/${firebaseConfig.projectId}/models/${model}:generateContent`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Firebase-AppId': firebaseConfig.appId,
+          'X-Goog-Api-Key': firebaseConfig.apiKey,
+        },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.75,
+            maxOutputTokens: 2600,
+            responseMimeType: 'application/json',
+            responseJsonSchema: quizSchema,
+          },
+        }),
+        signal: controller.signal,
+      },
+    );
+    if (!response.ok) throw new Error(`Firebase AI ${response.status}: ${await response.text()}`);
+    const payload = await response.json() as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    };
+    const text = payload.candidates?.[0]?.content?.parts?.map(part => part.text ?? '').join('');
+    if (!text) throw new Error('Firebase AI returned an empty response');
+    return JSON.parse(text);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 function validateQuestion(value: unknown): GeneratedQuizQuestion | null {
   if (!value || typeof value !== 'object') return null;
@@ -67,10 +94,17 @@ Author: ${author}
 Answer language / locale: ${language}
 
 Return exactly 5 questions. Each question must have exactly 5 distinct answer options and exactly one fully correct option. Test concrete plot details, character actions, objects, places, causes, consequences, or memorable events. Avoid generic questions such as "Who is the main character?". The four wrong options must be plausible but unambiguously wrong for someone who read the complete book. Never reveal the correct answer inside the question text. If several books have a similar title, use the author to identify the work. Use age-appropriate wording and do not include sexual or graphic details.`;
-  const result = await quizModel.generateContent(prompt);
-  const parsed = JSON.parse(result.response.text()) as { questions?: unknown[] };
-  if (!Array.isArray(parsed.questions) || parsed.questions.length !== 5) throw new Error('Invalid quiz response');
-  const questions = parsed.questions.map(validateQuestion);
-  if (questions.some(question => question === null)) throw new Error('Invalid quiz question');
-  return questions as GeneratedQuizQuestion[];
+  let lastError: unknown;
+  for (const model of MODEL_NAMES) {
+    try {
+      const parsed = await requestQuiz(prompt, model) as { questions?: unknown[] };
+      if (!Array.isArray(parsed.questions) || parsed.questions.length !== 5) throw new Error('Invalid quiz response');
+      const questions = parsed.questions.map(validateQuestion);
+      if (questions.some(question => question === null)) throw new Error('Invalid quiz question');
+      return questions as GeneratedQuizQuestion[];
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error('Quiz generation failed');
 }
