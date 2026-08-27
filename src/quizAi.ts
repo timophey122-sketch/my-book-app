@@ -86,14 +86,19 @@ function validateQuestion(value: unknown): GeneratedQuizQuestion | null {
   };
 }
 
-export async function generateBookQuiz(title: string, author: string, language: string): Promise<GeneratedQuizQuestion[]> {
+export async function generateBookQuiz(title: string, author: string, language: string, excludedQuestions: string[] = []): Promise<GeneratedQuizQuestion[]> {
+  const attemptId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const exclusions = excludedQuestions.length
+    ? `\nDo not reuse or closely paraphrase any of these questions from earlier attempts:\n${excludedQuestions.map((question, index) => `${index + 1}. ${question}`).join('\n')}`
+    : '';
   const prompt = `Create a reading-verification quiz for the book below.
 
 Book title: ${title}
 Author: ${author}
 Answer language / locale: ${language}
+Unique attempt ID: ${attemptId}
 
-Return exactly 5 questions. Each question must have exactly 5 distinct answer options and exactly one fully correct option. Test concrete plot details, character actions, objects, places, causes, consequences, or memorable events. Avoid generic questions such as "Who is the main character?". The four wrong options must be plausible but unambiguously wrong for someone who read the complete book. Never reveal the correct answer inside the question text. If several books have a similar title, use the author to identify the work. Use age-appropriate wording and do not include sexual or graphic details.`;
+Return exactly 5 new questions written specifically for this attempt. Each question must have exactly 5 distinct answer options and exactly one fully correct option. Test concrete plot details, character actions, objects, places, causes, consequences, or memorable events. Avoid generic questions such as "Who is the main character?". The four wrong options must be plausible but unambiguously wrong for someone who read the complete book. Never reveal the correct answer inside the question text. If several books have a similar title, use the author to identify the work. Use age-appropriate wording and do not include sexual or graphic details.${exclusions}`;
   let lastError: unknown;
   for (const model of MODEL_NAMES) {
     try {
@@ -101,6 +106,8 @@ Return exactly 5 questions. Each question must have exactly 5 distinct answer op
       if (!Array.isArray(parsed.questions) || parsed.questions.length !== 5) throw new Error('Invalid quiz response');
       const questions = parsed.questions.map(validateQuestion);
       if (questions.some(question => question === null)) throw new Error('Invalid quiz question');
+      const excluded = new Set(excludedQuestions.map(question => question.trim().toLocaleLowerCase()));
+      if ((questions as GeneratedQuizQuestion[]).some(question => excluded.has(question.prompt.toLocaleLowerCase()))) throw new Error('Repeated quiz question');
       return questions as GeneratedQuizQuestion[];
     } catch (error) {
       lastError = error;
