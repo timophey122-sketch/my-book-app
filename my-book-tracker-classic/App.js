@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, AppState, Dimensions, KeyboardAvoidingView, Linking, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, AppState, Dimensions, KeyboardAvoidingView, Linking, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Notifications from 'expo-notifications';
 import { LANGUAGES, TEXT } from './src/i18n';
 import { BACKGROUND_LABELS, CLASSIC_TEXT } from './src/backgroundLabels';
 
@@ -8,6 +9,10 @@ const { width } = Dimensions.get('window');
 const BOOKS_KEY = 'MY_BOOK_TRACKER_CLASSIC_BOOKS_V3';
 const SETTINGS_KEY = 'MY_BOOK_TRACKER_CLASSIC_SETTINGS_V3';
 const RTL_LANGUAGES = new Set(['ar', 'fa', 'ur', 'he']);
+const REMINDER_ID_KEY = 'MY_BOOK_TRACKER_CLASSIC_REMINDER_ID';
+const REMINDER_CHANNEL = 'classic-reading-reminders';
+
+Notifications.setNotificationHandler({ handleNotification: async () => ({ shouldShowAlert: true, shouldPlaySound: true, shouldSetBadge: false }) });
 const BACKGROUNDS = [
   ['paper', '#211913', '#8c5218'], ['midnight', '#071329', '#3156a5'], ['forest', '#05231a', '#247349'],
   ['ocean', '#042833', '#258ca5'], ['rose', '#32101f', '#a83466'], ['lavender', '#241535', '#7350b7'],
@@ -43,8 +48,19 @@ const RU = {
 
 const normalizeSettings = (saved) => ({
   language: saved?.language || 'en', theme: saved?.theme === 'dark' ? 'dark' : 'light',
-  background: BACKGROUNDS.some(([id]) => id === saved?.background) ? saved.background : 'paper', developer: saved?.developer === true,
+  background: BACKGROUNDS.some(([id]) => id === saved?.background) ? saved.background : 'paper', developer: saved?.developer === true, notifications: saved?.notifications === true,
 });
+const syncReadingReminder = async (enabled, language) => {
+  const previousId = await AsyncStorage.getItem(REMINDER_ID_KEY);
+  if (previousId) { await Notifications.cancelScheduledNotificationAsync(previousId).catch(() => {}); await AsyncStorage.removeItem(REMINDER_ID_KEY); }
+  if (!enabled) return;
+  const permission = await Notifications.requestPermissionsAsync();
+  if (permission.status !== 'granted') return;
+  if (Platform.OS === 'android') await Notifications.setNotificationChannelAsync(REMINDER_CHANNEL, { name: 'Reading reminders', importance: Notifications.AndroidImportance.HIGH, sound: 'default', vibrationPattern: [0, 250, 150, 250] });
+  const words = TEXT[language] || TEXT.en;
+  const id = await Notifications.scheduleNotificationAsync({ content: { title: 'My Book Tracker', body: words.reminder1 || TEXT.en.reminder1, sound: 'default' }, trigger: { seconds: 90 * 60, repeats: true, ...(Platform.OS === 'android' ? { channelId: REMINDER_CHANNEL } : {}) } });
+  await AsyncStorage.setItem(REMINDER_ID_KEY, id);
+};
 const startOfWeek = (value) => { const d = new Date(value); d.setHours(12, 0, 0, 0); const day = d.getDay(); d.setDate(d.getDate() - day + (day === 0 ? -6 : 1)); return d; };
 const dateKey = (value) => { const d = new Date(value); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 const unique = (items) => [...new Set(items.filter(Boolean).map((item) => String(item).trim()).filter(Boolean))];
@@ -60,7 +76,43 @@ const buildQuestion = (prompt, correct, wrong) => {
   if (!correct || alternatives.length < 4) return null;
   const options = shuffled([String(correct), ...alternatives]); return { prompt, options, correctIndex: options.indexOf(String(correct)) };
 };
+const createStoryQuestions = async (book) => {
+  try {
+    const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(`${book.title} book novel`)}&gsrlimit=5&prop=extracts&explaintext=1&exlimit=5&format=json&origin=*`;
+    const response = await fetch(searchUrl);
+    if (!response.ok) return [];
+    const payload = await response.json();
+  const pages = Object.values(payload?.query?.pages || {}).sort((a, b) => (a.index || 99) - (b.index || 99));
+  const page = pages.find((item) => String(item.extract || '').length > 800) || pages[0];
+  const extract = String(page?.extract || '').replace(/\s+/g, ' ').trim();
+  if (!extract) return [];
+  const sentences = extract.match(/[^.!?]{45,260}[.!?]/g) || [];
+  const entityPattern = /\p{Lu}[\p{L}\p{M}'’.-]{2,}(?:\s+(?:of|the|de|van|von|и|аль-)?\s*\p{Lu}[\p{L}\p{M}'’.-]{2,}){0,2}/gu;
+  const entityPool = unique(sentences.flatMap((sentence) => sentence.match(entityPattern) || []))
+    .filter((entity) => !['The', 'This', 'When', 'After', 'During', 'However', 'Although', 'Book'].includes(entity));
+  const questions = [];
+  for (const sentence of shuffled(sentences)) {
+    const entities = unique(sentence.match(entityPattern) || []).filter((entity) => entityPool.includes(entity));
+    const correct = entities.find((entity) => entity.length >= 4 && !book.title.toLowerCase().includes(entity.toLowerCase()));
+    if (!correct) continue;
+    const sameShape = entityPool.filter((entity) => entity !== correct && Math.abs(entity.split(' ').length - correct.split(' ').length) <= 1);
+    const question = buildQuestion(`Which name or place completes this detail from “${book.title}”?\n“${sentence.replace(correct, '_____')}”`, correct, shuffled(sameShape));
+    if (question && !questions.some((item) => item.prompt === question.prompt)) questions.push(question);
+    if (questions.length === 5) break;
+  }
+    return questions;
+  } catch {
+    return [];
+  }
+};
 const createBookQuiz = async (book, language) => {
+  const storyQuestions = await createStoryQuestions(book);
+  const localize = async (questions) => language === 'en' ? questions : Promise.all(questions.map(async (question) => ({
+    ...question,
+    prompt: await translateOne(question.prompt, language),
+    options: await Promise.all(question.options.map((option) => translateOne(option, language))),
+  })));
+  if (storyQuestions.length === 5) return localize(storyQuestions);
   const fields = 'key,title,author_name,first_publish_year,publisher,language,subject';
   const response = await fetch(`https://openlibrary.org/search.json?title=${encodeURIComponent(book.title)}&limit=30&fields=${fields}`);
   if (!response.ok) throw new Error('catalog');
@@ -70,16 +122,16 @@ const createBookQuiz = async (book, language) => {
   const authors = unique(docs.flatMap((doc) => doc.author_name || [])); const publishers = unique(docs.flatMap((doc) => doc.publisher || []));
   const subjects = unique(docs.flatMap((doc) => doc.subject || []).filter((item) => String(item).length < 55));
   const years = unique(docs.map((doc) => doc.first_publish_year)).map(String); const languages = unique(docs.flatMap((doc) => doc.language || []));
-  const seed = [
+  const metadataQuestions = [
     buildQuestion(`Which author is credited for “${exact.title || book.title}”?`, exact.author_name?.[0], authors),
     buildQuestion(`In which year was “${exact.title || book.title}” first published?`, exact.first_publish_year, years),
     buildQuestion(`Which publisher has released an edition of “${exact.title || book.title}”?`, exact.publisher?.[0], publishers),
     buildQuestion(`Which subject is listed for “${exact.title || book.title}”?`, exact.subject?.[0], subjects),
     buildQuestion(`Which language code is associated with an edition of “${exact.title || book.title}”?`, exact.language?.[0], languages),
   ].filter(Boolean);
-  if (seed.length !== 5) throw new Error('insufficient-metadata');
-  if (language === 'en') return seed;
-  return Promise.all(seed.map(async (question) => ({ ...question, prompt: await translateOne(question.prompt, language), options: await Promise.all(question.options.map((option) => translateOne(option, language))) })));
+  const seed = [...storyQuestions, ...metadataQuestions].slice(0, 5);
+  if (seed.length !== 5) throw new Error('insufficient-book-information');
+  return localize(seed);
 };
 
 export default function App() {
@@ -101,6 +153,7 @@ export default function App() {
     setReady(true);
   }); }, []);
   useEffect(() => { if (ready) AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); }, [ready, settings]);
+  useEffect(() => { if (ready) syncReadingReminder(settings.notifications, settings.language).catch(() => {}); }, [ready, settings.notifications, settings.language]);
   useEffect(() => { const subscription = AppState.addEventListener('change', (next) => {
     if (screen === 'quiz' && appState.current === 'active' && next !== 'active') { setQuiz([]); setQuizIndex(0); setQuizAnswer(null); setQuizCorrect(0); setQuizResult(null); setScreen('calendar'); }
     appState.current = next;
@@ -161,7 +214,7 @@ export default function App() {
     <View style={styles.section}><Text style={styles.sectionTitle}>{tx('theme')}</Text><View style={styles.row}><TouchableOpacity style={[styles.halfButton, settings.theme === 'light' && styles.selected]} onPress={() => setSettings((value) => ({ ...value, theme: 'light' }))}><Text style={styles.buttonText}>☀ {tx('light')}</Text></TouchableOpacity><TouchableOpacity style={[styles.halfButton, settings.theme === 'dark' && styles.selected]} onPress={() => setSettings((value) => ({ ...value, theme: 'dark' }))}><Text style={styles.buttonText}>☾ {tx('dark')}</Text></TouchableOpacity></View></View>
     <View style={styles.section}><Text style={styles.sectionTitle}>{local.background}</Text><View style={styles.backgroundGrid}>{BACKGROUNDS.map(([id, dark, accent]) => <TouchableOpacity key={id} style={[styles.backgroundChoice, settings.background === id && styles.selected]} onPress={() => setSettings((value) => ({ ...value, background: id }))}><View style={[styles.backgroundPreview, { backgroundColor: dark }]}><View style={[styles.previewCircle, { backgroundColor: accent }]}/></View><Text style={styles.backgroundLabel}>{BACKGROUND_LABELS[lang]?.[id] || EN[id]}</Text></TouchableOpacity>)}</View></View>
     <View style={styles.section}><Text style={styles.sectionTitle}>{tx('language')}</Text><TouchableOpacity style={styles.selectField} onPress={() => setLanguageOpen(true)}><Text style={styles.selectText}>{LANGUAGES.find(([code]) => code === lang)?.[1] || 'English'}</Text><Text style={styles.selectText}>⌄</Text></TouchableOpacity></View>
-    <View style={styles.section}><Text style={styles.sectionTitle}>{tx('notifications')}</Text><Text style={styles.bodyText}>{local.notificationsInfo}</Text><TouchableOpacity style={styles.outlineButton} onPress={() => Linking.openSettings()}><Text style={styles.outlineText}>{local.openNotificationSettings}</Text></TouchableOpacity></View>
+    <View style={styles.section}><View style={styles.switchRow}><View style={{ flex: 1 }}><Text style={styles.sectionTitle}>{tx('notifications')}</Text><Text style={styles.bodyText}>{local.notificationsInfo}</Text></View><Switch value={settings.notifications} onValueChange={(notifications) => setSettings((value) => ({ ...value, notifications }))} trackColor={{ false: palette.border, true: palette.primary }}/></View><TouchableOpacity style={styles.outlineButton} onPress={() => Linking.openSettings()}><Text style={styles.outlineText}>{local.openNotificationSettings}</Text></TouchableOpacity></View>
     <TouchableOpacity style={styles.primary} onPress={() => Linking.openURL('https://play.google.com/store/apps/details?id=com.tirka.snack194d31ffd8be41a68d68f8ac0064d5ac')}><Text style={styles.primaryText}>{local.review}</Text></TouchableOpacity>
     {settings.developer ? <View style={styles.section}><Text style={styles.sectionTitle}>{local.developerMode}</Text><Text style={styles.bodyText}>{local.developerSaved}</Text><TouchableOpacity style={styles.danger} onPress={() => setSettings((value) => ({ ...value, developer: false }))}><Text style={styles.primaryText}>{local.exitDeveloper}</Text></TouchableOpacity></View> : null}
     </ScrollView>
@@ -191,6 +244,7 @@ const makeStyles = (c, rtl) => StyleSheet.create({
   header: { paddingTop: 10, paddingBottom: 14 }, brand: { color: c.primary, fontSize: 15, fontWeight: '900', letterSpacing: 1, textAlign: rtl ? 'right' : 'left', writingDirection: rtl ? 'rtl' : 'ltr' }, title: { color: c.text, fontSize: 38, lineHeight: 46, fontWeight: '900', marginTop: 10, textAlign: rtl ? 'right' : 'left', writingDirection: rtl ? 'rtl' : 'ltr' }, hint: { color: c.muted, fontSize: 16, lineHeight: 24, marginTop: 8, textAlign: rtl ? 'right' : 'left', writingDirection: rtl ? 'rtl' : 'ltr' },
   scroll: { flex: 1 }, scrollContent: { paddingBottom: 18 }, section: { backgroundColor: c.card, borderWidth: 1, borderColor: c.border, borderRadius: 14, padding: 16, marginBottom: 14 }, sectionTitle: { color: c.text, fontSize: 22, fontWeight: '900', marginBottom: 14, textAlign: rtl ? 'right' : 'left', writingDirection: rtl ? 'rtl' : 'ltr' }, bodyText: { color: c.muted, fontSize: 16, lineHeight: 23, textAlign: rtl ? 'right' : 'left', writingDirection: rtl ? 'rtl' : 'ltr' }, row: { flexDirection: rtl ? 'row-reverse' : 'row', gap: 10 },
   halfButton: { flex: 1, minHeight: 52, borderRadius: 12, borderWidth: 1, borderColor: c.border, alignItems: 'center', justifyContent: 'center', backgroundColor: c.input }, selected: { backgroundColor: c.primary, borderColor: c.primary }, buttonText: { color: c.text, fontSize: 16, fontWeight: '900' },
+  switchRow: { flexDirection: rtl ? 'row-reverse' : 'row', alignItems: 'center', gap: 12 },
   backgroundGrid: { flexDirection: rtl ? 'row-reverse' : 'row', flexWrap: 'wrap', justifyContent: 'space-between' }, backgroundChoice: { width: '31.5%', borderWidth: 1, borderColor: c.border, borderRadius: 12, padding: 7, marginBottom: 10, alignItems: 'center' }, backgroundPreview: { width: '100%', height: 46, borderRadius: 9, overflow: 'hidden' }, previewCircle: { width: 52, height: 52, borderRadius: 26, position: 'absolute', right: -8, top: -16, opacity: 0.9 }, backgroundLabel: { color: c.text, fontSize: 12, fontWeight: '800', marginTop: 7, textAlign: 'center' },
   selectField: { minHeight: 54, borderWidth: 1, borderColor: c.border, borderRadius: 12, backgroundColor: c.input, paddingHorizontal: 14, flexDirection: rtl ? 'row-reverse' : 'row', alignItems: 'center', justifyContent: 'space-between' }, selectText: { color: c.text, fontSize: 17, fontWeight: '800', writingDirection: rtl ? 'rtl' : 'ltr' }, languageRow: { minHeight: 50, paddingHorizontal: 12, marginBottom: 7, borderWidth: 1, borderColor: c.border, borderRadius: 10, flexDirection: rtl ? 'row-reverse' : 'row', alignItems: 'center', justifyContent: 'space-between' },
   modalShade: { flex: 1, backgroundColor: '#0009', justifyContent: 'center', padding: 22 }, languageModal: { maxHeight: '82%', backgroundColor: c.card, borderRadius: 16, padding: 16 }, codeModal: { backgroundColor: c.card, borderRadius: 16, padding: 18 },
