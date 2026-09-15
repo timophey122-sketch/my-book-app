@@ -197,7 +197,7 @@ export default function App() {
     setQuizCorrect(correct); setQuizIndex((index) => index + 1); setQuizAnswer(null); setQuizSeconds(20);
   };
   const unlockDeveloper = () => { if (developerCode !== '1410') { Alert.alert(local.wrongPassword); return; } setSettings((value) => ({ ...value, developer: true })); setDeveloperOpen(false); setDeveloperCode(''); };
-  const tapBrand = () => { const next = brandTaps + 1; setBrandTaps(next); if (next >= 5 && !settings.developer) { setBrandTaps(0); setDeveloperOpen(true); } };
+  const tapBrand = () => { const next = brandTaps + 1; setBrandTaps(next); if (next >= 5 && !settings.developer) { setBrandTaps(0); setScreen('settings'); setDeveloperOpen(true); } };
 
   const palette = useMemo(() => { const entry = BACKGROUNDS.find(([id]) => id === settings.background) || BACKGROUNDS[0]; const dark = settings.theme === 'dark'; return {
     bg: dark ? entry[1] : '#f7f3eb', accent: dark ? entry[2] : `${entry[2]}55`, card: dark ? 'rgba(22,20,19,0.94)' : 'rgba(255,252,247,0.94)', text: dark ? '#fff8ec' : '#201b17',
@@ -207,7 +207,11 @@ export default function App() {
   const Brand = () => <TouchableOpacity activeOpacity={1} onPress={tapBrand}><Text style={styles.brand}>{settings.developer ? 'DEVELOPER · ' : ''}{local.brand}</Text></TouchableOpacity>;
   const Header = ({ title, hint }) => <View style={styles.header}><Brand/><Text style={styles.title}>{title}</Text>{hint ? <Text style={styles.hint}>{hint}</Text> : null}</View>;
   const Bottom = ({ active = 'library' }) => <View style={styles.bottom}><TouchableOpacity style={[styles.tab, active === 'library' && styles.activeTab]} onPress={() => setScreen('library')}><Text style={styles.tabIcon}>▦</Text><Text style={[styles.tabText, active === 'library' && styles.activeTabText]}>{tx('library')}</Text></TouchableOpacity><TouchableOpacity style={[styles.tab, active === 'settings' && styles.activeTab]} onPress={() => setScreen('settings')}><Text style={styles.tabIcon}>⚙</Text><Text style={[styles.tabText, active === 'settings' && styles.activeTabText]}>{tx('settings')}</Text></TouchableOpacity></View>;
-  const Shell = ({ children, active, noBottom = false }) => <SafeAreaView style={styles.root}><View style={styles.accentBig}/><View style={styles.accentSmall}/><View style={styles.body}>{children}</View>{noBottom ? null : <Bottom active={active}/>}</SafeAreaView>;
+  // Keep the screen wrapper component stable while text is being entered.
+  // Recreating this component on every keystroke remounts every TextInput and drops focus on Android.
+  const Shell = useMemo(() => function StableShell({ children, active, noBottom = false }) {
+    return <SafeAreaView style={styles.root}><View style={styles.accentBig}/><View style={styles.accentSmall}/><View style={styles.body}>{children}</View>{noBottom ? null : <Bottom active={active}/>}</SafeAreaView>;
+  }, [styles, lang]);
   if (!ready) return <SafeAreaView style={[styles.root, { alignItems: 'center', justifyContent: 'center' }]}><Text style={styles.title}>{tx('loading')}</Text></SafeAreaView>;
 
   if (screen === 'settings') return <Shell active="settings"><Header title={local.appSettings} hint={local.settingsHint}/><ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
