@@ -1,4 +1,4 @@
-# My Book Tracker Classic
+# My Book Tracker
 
 Первая, самостоятельная версия приложения My Book Tracker. Она хранится отдельно от `My Book Tracker Family` и использует другой Android package name, поэтому обе версии можно установить одновременно.
 

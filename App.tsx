@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, ActivityIndicator, AppState, ImageBackground, Linking, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, ActivityIndicator, AppState, ImageBackground, Linking, Modal, NativeModules, Platform, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { createUserWithEmailAndPassword, onAuthStateChanged, signInAnonymously, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { addDoc, collection, deleteDoc, doc, getDocs, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where, writeBatch } from 'firebase/firestore';
 import { firebaseAuth, firebaseDb } from './src/firebase';
@@ -35,25 +35,48 @@ const REMINDER_HOURS = [9,12,15,18,21];
 const READING_CHANNEL_ID = 'reading-reminders-v2';
 const REMINDER_SCHEDULE_KEY = 'MBTF_READING_REMINDERS_V2';
 const NOTIFICATION_MIGRATION_KEY = 'MBTF_NOTIFICATION_MIGRATION_V3';
+const PARENT_SEEN_PREFIX = 'MBTF_PARENT_SEEN_EVENTS_';
+const NOTIFICATION_READY_PREFIX = 'MBTF_NOTIFICATION_READY_';
+const NativeReadingNotifications = NativeModules.ReadingNotifications as undefined|{
+  schedule(entries:{time:number;day:string;title:string;body:string}[]):Promise<number>;
+  cancelAll():Promise<boolean>;
+  cancelDay(day:string):Promise<boolean>;
+  showNow(title:string,body:string):Promise<boolean>;
+};
 type ReminderSchedule = Record<string,string[]>;
 let reminderQueue:Promise<void>=Promise.resolve();
 function queueReminderWork(work:()=>Promise<void>){reminderQueue=reminderQueue.then(work,work);return reminderQueue}
 async function readReminderSchedule(){try{return JSON.parse(await AsyncStorage.getItem(REMINDER_SCHEDULE_KEY)||'{}') as ReminderSchedule}catch{return {}}}
-async function cancelTrackedReminders(){const schedule=await readReminderSchedule();await Promise.all(Object.values(schedule).flat().map(id=>Notifications.cancelScheduledNotificationAsync(id).catch(()=>{})));await AsyncStorage.removeItem(REMINDER_SCHEDULE_KEY)}
-async function cancelTodayReminders(){const schedule=await readReminderSchedule();const key=todayKey();await Promise.all((schedule[key]||[]).map(id=>Notifications.cancelScheduledNotificationAsync(id).catch(()=>{})));delete schedule[key];await AsyncStorage.setItem(REMINDER_SCHEDULE_KEY,JSON.stringify(schedule))}
+async function cancelTrackedReminders(){if(Platform.OS==='android'&&NativeReadingNotifications)await NativeReadingNotifications.cancelAll().catch(()=>{});const schedule=await readReminderSchedule();await Promise.all(Object.values(schedule).flat().map(id=>Notifications.cancelScheduledNotificationAsync(id).catch(()=>{})));await AsyncStorage.removeItem(REMINDER_SCHEDULE_KEY)}
+async function cancelTodayReminders(){const key=todayKey();if(Platform.OS==='android'&&NativeReadingNotifications)await NativeReadingNotifications.cancelDay(key).catch(()=>{});const schedule=await readReminderSchedule();await Promise.all((schedule[key]||[]).map(id=>Notifications.cancelScheduledNotificationAsync(id).catch(()=>{})));delete schedule[key];await AsyncStorage.setItem(REMINDER_SCHEDULE_KEY,JSON.stringify(schedule))}
 async function ensureNotificationChannel(){if(Platform.OS==='android')await Notifications.setNotificationChannelAsync(READING_CHANNEL_ID,{name:'My Book Tracker',description:'Reading reminders and family updates',importance:Notifications.AndroidImportance.MAX,sound:'default',vibrationPattern:[0,250,180,250],lockscreenVisibility:Notifications.AndroidNotificationVisibility.PUBLIC})}
+async function showSystemNotification(title:string,body:string){if(Platform.OS==='android'&&NativeReadingNotifications){await NativeReadingNotifications.showNow(title,body);return}await Notifications.scheduleNotificationAsync({content:{title,body,sound:'default'},trigger:null})}
+async function requestNotificationPermission(role:Role,language:string){
+  await ensureNotificationChannel();
+  const permission=await Notifications.requestPermissionsAsync();
+  if(permission.status!=='granted')return false;
+  const readyKey=`${NOTIFICATION_READY_PREFIX}${role}`;
+  if(!(await AsyncStorage.getItem(readyKey))){
+    const russian=language==='ru';
+    await showSystemNotification('My Book Tracker Family',russian?'Уведомления включены и работают':'Notifications are enabled and working').catch(()=>{});
+    await AsyncStorage.setItem(readyKey,'done');
+  }
+  return true;
+}
 async function scheduleReminders(language:string,readToday:boolean){
   await cancelTrackedReminders();
-  await ensureNotificationChannel();
-  const permission=await Notifications.requestPermissionsAsync();if(permission.status!=='granted')return;
-  const tr=TEXT50[language]??TEXT50.en!;const now=new Date();const schedule:ReminderSchedule={};
+  const permission=await Notifications.getPermissionsAsync();if(permission.status!=='granted')return;
+  const tr=TEXT50[language]??TEXT50.en!;const now=new Date();const schedule:ReminderSchedule={};const nativeEntries:{time:number;day:string;title:string;body:string}[]=[];
   for(let dayOffset=0;dayOffset<14;dayOffset++){
     const day=new Date(now);day.setHours(12,0,0,0);day.setDate(now.getDate()+dayOffset);const key=dateKey(day);if(dayOffset===0&&readToday)continue;
     for(let i=0;i<REMINDER_HOURS.length;i++){
       const fireAt=new Date(day);fireAt.setHours(REMINDER_HOURS[i]!,0,0,0);if(fireAt<=now)continue;
-      const id=await Notifications.scheduleNotificationAsync({content:{title:'My Book Tracker',body:tr[`reminder${i+1}`],sound:'default',priority:Notifications.AndroidNotificationPriority.HIGH},trigger:{date:fireAt,channelId:READING_CHANNEL_ID}});(schedule[key]??=[]).push(id);
+      const body=tr[`reminder${i+1}`]||TEXT50.en![`reminder${i+1}`]||'Time to read';
+      if(Platform.OS==='android'&&NativeReadingNotifications)nativeEntries.push({time:fireAt.getTime(),day:key,title:'My Book Tracker',body});
+      else{const id=await Notifications.scheduleNotificationAsync({content:{title:'My Book Tracker',body,sound:'default',priority:Notifications.AndroidNotificationPriority.HIGH},trigger:{date:fireAt,channelId:READING_CHANNEL_ID}});(schedule[key]??=[]).push(id)}
     }
   }
+  if(nativeEntries.length&&NativeReadingNotifications)await NativeReadingNotifications.schedule(nativeEntries);
   await AsyncStorage.setItem(REMINDER_SCHEDULE_KEY,JSON.stringify(schedule));
 }
 
@@ -76,7 +99,6 @@ export default function App(){
   const [lang,setLang]=useState('ru'); const [theme,setTheme]=useState<Theme>('dark'); const [notify,setNotify]=useState(true);
   const [books,setBooks]=useState<Book[]>([]); const [events,setEvents]=useState<EventItem[]>([]); const [children,setChildren]=useState<ChildProfile[]>([]);
   const [rewards,setRewards]=useState<Reward[]>([]); const [quizAttempts,setQuizAttempts]=useState<QuizAttempt[]>([]);
-  const parentEventsReady=useRef(false);
   const t=(key:string)=>TEXT50[lang]?.[key]??TEXT50.en?.[key]??key;
 
   useEffect(()=>{ let authReady=false; const off=onAuthStateChanged(firebaseAuth,async user=>{authReady=true;const raw=await AsyncStorage.getItem(SESSION_KEY);if(raw&&user){try{const saved=JSON.parse(raw) as Account;if(!isDeveloper(saved.role)){setAccount(saved);setRoute('account')}}catch{}}setBooting(false)});const timer=setTimeout(()=>{if(!authReady)setBooting(false)},5000);return()=>{off();clearTimeout(timer)}},[]);
@@ -85,24 +107,27 @@ export default function App(){
   useEffect(()=>{
     if(!account)return;
     if(isDeveloper(account.role)){AsyncStorage.setItem(DEV_KEY,JSON.stringify({books,events,rewards,quizAttempts,lang,theme,notify}));return}
-    parentEventsReady.current=false;
     const q=query(collection(firebaseDb,'events'),where('familyId','==',account.familyId));
-    return onSnapshot(q,s=>{
+    return onSnapshot(q,async s=>{
       const next=s.docs.map(x=>({id:x.id,...x.data()} as EventItem));
-      if(parentEventsReady.current&&account.role==='parent'&&notify){
-        for(const change of s.docChanges().filter(item=>item.type==='added')){
-          const event={id:change.doc.id,...change.doc.data()} as EventItem;
-          if(event.eventType==='readingRecorded'&&event.notification)ensureNotificationChannel().then(()=>Notifications.scheduleNotificationAsync({content:{title:'My Book Tracker Family',body:event.text,sound:'default',priority:Notifications.AndroidNotificationPriority.HIGH},trigger:{channelId:READING_CHANNEL_ID}})).catch(()=>{});
+      if(account.role==='parent'&&notify){
+        const seenKey=`${PARENT_SEEN_PREFIX}${account.profileId}`;
+        let seen:string[]=[];try{seen=JSON.parse(await AsyncStorage.getItem(seenKey)||'[]')}catch{}
+        const seenSet=new Set(seen);
+        const readable=next.filter(event=>event.eventType==='readingRecorded'&&event.notification&&event.readingDate===todayKey());
+        for(const event of readable){
+          if(!seenSet.has(event.id)){await showSystemNotification('My Book Tracker Family',event.text).catch(()=>{});seenSet.add(event.id)}
         }
+        await AsyncStorage.setItem(seenKey,JSON.stringify([...seenSet].slice(-200)));
       }
-      parentEventsReady.current=true;setEvents(next);
+      setEvents(next);
     },()=>setEvents([]));
   },[account?.familyId,account?.role,notify]);
   useEffect(()=>{if(!account)return;if(isDeveloper(account.role)){setChildren([{id:'developer-child',displayName:t('developerChild')}]);return}const q=query(collection(firebaseDb,'users'),where('familyId','==',account.familyId));return onSnapshot(q,s=>setChildren(s.docs.filter(x=>x.data().role==='child').map(x=>({id:x.id,displayName:String(x.data().displayName||t('childName'))}))),()=>setChildren([]))},[account?.familyId,account?.role]);
   useEffect(()=>{if(!account||isDeveloper(account.role))return;const q=query(collection(firebaseDb,'rewards'),where('familyId','==',account.familyId));return onSnapshot(q,s=>setRewards(s.docs.map(x=>({id:x.id,...x.data()} as Reward))),()=>setRewards([]))},[account?.familyId,account?.role]);
   useEffect(()=>{if(!account||isDeveloper(account.role))return;const q=query(collection(firebaseDb,'quizAttempts'),where('familyId','==',account.familyId));return onSnapshot(q,s=>setQuizAttempts(s.docs.map(x=>({id:x.id,...x.data()} as QuizAttempt))),()=>setQuizAttempts([]))},[account?.familyId,account?.role]);
   useEffect(()=>{queueReminderWork(async()=>{if(await AsyncStorage.getItem(NOTIFICATION_MIGRATION_KEY))return;await Notifications.cancelAllScheduledNotificationsAsync();await AsyncStorage.setItem(NOTIFICATION_MIGRATION_KEY,'done')}).catch(()=>{})},[]);
-  useEffect(()=>{const childAccount=account&&(account.role==='child'||account.role==='developerChild');if(childAccount&&notify){const readToday=books.some(book=>(book.history?.[todayKey()]??(book.lastRead===todayKey()?book.today:0))>0);queueReminderWork(()=>scheduleReminders(lang,readToday)).catch(()=>{});return}const parentAccount=account&&(account.role==='parent'||account.role==='developerParent');queueReminderWork(async()=>{await cancelTrackedReminders();if(parentAccount&&notify){await ensureNotificationChannel();await Notifications.requestPermissionsAsync()}}).catch(()=>{})},[account?.profileId,account?.role,notify,lang,books]);
+  useEffect(()=>{const childAccount=account&&(account.role==='child'||account.role==='developerChild');if(childAccount&&notify){const readToday=books.some(book=>(book.history?.[todayKey()]??(book.lastRead===todayKey()?book.today:0))>0);queueReminderWork(async()=>{if(await requestNotificationPermission(account.role,lang))await scheduleReminders(lang,readToday)}).catch(()=>{});return}const parentAccount=account&&(account.role==='parent'||account.role==='developerParent');queueReminderWork(async()=>{await cancelTrackedReminders();if(parentAccount&&notify)await requestNotificationPermission(account.role,lang)}).catch(()=>{})},[account?.profileId,account?.role,notify,lang,books]);
 
   const enter=async(a:Account,persist=true)=>{setAccount(a);setRoute('account');if(persist&&!isDeveloper(a.role)){await setDoc(doc(firebaseDb,'deviceProfiles',a.uid),{authUid:a.uid,profileId:a.profileId,familyId:a.familyId,role:a.role,updatedAt:serverTimestamp()},{merge:true});await AsyncStorage.setItem(SESSION_KEY,JSON.stringify(a))}};
   const logout=async()=>{const dev=isDeveloper(account?.role);if(dev)await AsyncStorage.removeItem(DEV_KEY);else{await AsyncStorage.removeItem(SESSION_KEY);await signOut(firebaseAuth).catch(()=>{})}setBooks([]);setEvents([]);setChildren([]);setRewards([]);setQuizAttempts([]);setAccount(null);setRoute('welcome')};

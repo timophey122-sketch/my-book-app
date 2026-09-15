@@ -10,7 +10,7 @@ const BOOKS_KEY = 'MY_BOOK_TRACKER_CLASSIC_BOOKS_V3';
 const SETTINGS_KEY = 'MY_BOOK_TRACKER_CLASSIC_SETTINGS_V3';
 const RTL_LANGUAGES = new Set(['ar', 'fa', 'ur', 'he']);
 const REMINDER_ID_KEY = 'MY_BOOK_TRACKER_CLASSIC_REMINDER_ID';
-const REMINDER_CHANNEL = 'classic-reading-reminders';
+const REMINDER_CHANNEL = 'my-book-tracker-reading-reminders';
 
 Notifications.setNotificationHandler({ handleNotification: async () => ({ shouldShowAlert: true, shouldPlaySound: true, shouldSetBadge: false }) });
 const BACKGROUNDS = [
