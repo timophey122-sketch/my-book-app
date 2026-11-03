@@ -1,6 +1,6 @@
 # My Book Tracker
 
-Android production builds must use `compileSdkVersion 36`, `targetSdkVersion 36`, and Android Build Tools `36.0.0` to satisfy the Google Play Android 16 requirement.
+Android production builds must use `minSdkVersion 24`, `compileSdkVersion 36`, `targetSdkVersion 36`, and Android Build Tools `36.0.0` to satisfy Google Play automatic protection and Android 16 requirements.
 
 Первая, самостоятельная версия приложения My Book Tracker. Она хранится отдельно от `My Book Tracker Family` и использует другой Android package name, поэтому обе версии можно установить одновременно.
 
