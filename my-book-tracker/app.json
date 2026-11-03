@@ -22,7 +22,7 @@
         "backgroundColor": "#061126"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.timophey.MyBookTrackerClassic",
+      "package": "com.timophey.MyBookTracker",
       "versionCode": 5,
       "minSdkVersion": 24,
       "compileSdkVersion": 36,
