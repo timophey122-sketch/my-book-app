@@ -2,7 +2,7 @@
   "expo": {
     "name": "My Book Tracker",
     "slug": "my-book-tracker",
-    "version": "2.0.4",
+    "version": "2.0.5",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -23,7 +23,7 @@
       },
       "edgeToEdgeEnabled": true,
       "package": "com.timophey.MyBookTracker",
-      "versionCode": 5,
+      "versionCode": 100,
       "minSdkVersion": 24,
       "compileSdkVersion": 36,
       "targetSdkVersion": 36,
