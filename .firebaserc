@@ -1,5 +1,14 @@
 {
   "projects": {
     "default": "my-book-tracker-family"
+  },
+  "targets": {
+    "my-book-tracker-family": {
+      "hosting": {
+        "privacy": [
+          "my-book-tracker-privacy"
+        ]
+      }
+    }
   }
 }
